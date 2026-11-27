@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Online Assessment</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9; --surface: #ffffff; --surface-2: #eef1f5; --border: #d9dee6;
+  --text: #191919; --text-2: #5c6470; --accent: #257de0; --accent-ink: #ffffff;
+  --good: #1e7b34; --good-bg: #e7f6ea; --warn: #8a5a00; --warn-bg: #fff4d6;
+  --bad: #b42318; --bad-bg: #fdecec; --focus: #257de0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121417; --surface: #1c1f24; --surface-2: #262a31; --border: #353b45;
+    --text: #efefef; --text-2: #a3abb7; --accent: #338ced; --accent-ink: #ffffff;
+    --good: #5fd27a; --good-bg: #173322; --warn: #f2c14e; --warn-bg: #3a2f12;
+    --bad: #ff8a80; --bad-bg: #3d1c1a; --focus: #338ced;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121417; --surface: #1c1f24; --surface-2: #262a31; --border: #353b45;
+  --text: #efefef; --text-2: #a3abb7; --accent: #338ced; --accent-ink: #ffffff;
+  --good: #5fd27a; --good-bg: #173322; --warn: #f2c14e; --warn-bg: #3a2f12;
+  --bad: #ff8a80; --bad-bg: #3d1c1a; --focus: #338ced;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+body.exam-mode { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body.exam-mode input, body.exam-mode textarea { user-select: text; -webkit-user-select: text; }
+.hidden { display: none !important; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+h1 { font-size: 1.5rem; margin: 0 0 4px; line-height: 1.25; }
+h2 { font-size: 1.1rem; margin: 20px 0 8px; }
+.muted { color: var(--text-2); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.chip { background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: .875rem; }
+label.f { display: block; font-weight: 600; margin: 14px 0 4px; font-size: .95rem; }
+input[type=text], input[type=email], textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); font: inherit; }
+textarea { min-height: 180px; resize: vertical; }
+input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.row { display: flex; gap: 8px; align-items: stretch; }
+.row > input { flex: 1; }
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); padding: 10px 16px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.rules { margin: 8px 0 0; padding-left: 20px; }
+.rules li { margin: 4px 0; }
+.notice { border-radius: 8px; padding: 10px 12px; margin: 12px 0; font-size: .95rem; }
+.notice.err { background: var(--bad-bg); color: var(--bad); }
+.notice.ok { background: var(--good-bg); color: var(--good); }
+.notice.warn { background: var(--warn-bg); color: var(--warn); }
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0; }
+.check input { margin-top: 4px; width: 18px; height: 18px; }
+
+/* ---------- exam ---------- */
+.topbar { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap; }
+.topbar .title { font-weight: 700; flex: 1; min-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timer { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.15rem; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); }
+.timer.warn { background: var(--warn-bg); color: var(--warn); }
+.timer.crit { background: var(--bad-bg); color: var(--bad); }
+.pill { font-size: .85rem; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.exam { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 1fr 220px; gap: 16px; }
+@media (max-width: 760px) { .exam { grid-template-columns: 1fr; } }
+.qhead { display: flex; justify-content: space-between; gap: 12px; color: var(--text-2); font-size: .9rem; margin-bottom: 8px; }
+.qtext { font-size: 1.05rem; margin-bottom: 16px; overflow-wrap: anywhere; }
+.qtext .katex-display { overflow-x: auto; overflow-y: hidden; }
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--border);
+  border-radius: 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
+.opt:hover { background: var(--surface-2); }
+.opt.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.opt input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.opt .letter { font-weight: 700; color: var(--text-2); min-width: 1.2em; }
+.nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; margin: 8px 0 12px; }
+.palette button { padding: 8px 0; font-size: .9rem; position: relative; }
+.palette button.answered { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.palette button.current { outline: 2px solid var(--text); outline-offset: 1px; }
+.palette button.flagged::after { content: ""; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+.legend { font-size: .8rem; color: var(--text-2); line-height: 1.7; }
+.save-state { font-size: .8rem; color: var(--text-2); margin-top: 8px; }
+.watermark { position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: .07; background-repeat: repeat; }
+.exam-content.blurred { filter: blur(14px); pointer-events: none; }
+
+/* ---------- overlays ---------- */
+.overlay { position: fixed; inset: 0; z-index: 100; background: rgba(10, 12, 16, .82); display: flex;
+  align-items: center; justify-content: center; padding: 16px; }
+.overlay .card { max-width: 480px; width: 100%; text-align: center; }
+.overlay h2 { margin-top: 0; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 120; background: var(--text);
+  color: var(--bg); padding: 10px 16px; border-radius: 8px; max-width: calc(100% - 32px); font-size: .95rem; }
+.score-big { font-size: 2.4rem; font-weight: 800; margin: 8px 0; }
+@media print { body * { display: none !important; } body::after { content: "Printing is disabled for this assessment."; display: block; } }
+</style>
+</head>
+<body>
+<!-- ======================= LOADING / ERROR ======================= -->
+<div id="screen-loading" class="wrap"><div class="card"><p class="muted">Loading assessment…</p></div></div>
+<div id="screen-error" class="wrap hidden"><div class="card"><h1>Unable to open this assessment</h1><p id="fatal-msg" class="notice err"></p></div></div>
+
+<!-- ======================= INTRO / IDENTITY ======================= -->
+<div id="screen-intro" class="wrap hidden">
+  <div class="card">
+    <h1 id="intro-title"></h1>
+    <div class="meta" id="intro-meta"></div>
+    <div id="intro-instructions" class="muted"></div>
+    <div id="window-notice"></div>
+
+    <h2>Assessment rules</h2>
+    <ul class="rules" id="rules"></ul>
+
+    <form id="identity-form" autocomplete="off" novalidate>
+      <h2>Your details</h2>
+      <label class="f" for="f-name">Full name</label>
+      <input id="f-name" type="text" required maxlength="100" autocomplete="name">
+      <label class="f" for="f-email">E-mail (your feedback is sent here)</label>
+      <input id="f-email" type="email" required maxlength="120" autocomplete="email">
+      <label class="f" for="f-sid">Student ID <span class="muted">(optional)</span></label>
+      <input id="f-sid" type="text" maxlength="40">
+      <div id="access-wrap" class="hidden">
+        <label class="f" for="f-access">Access code (given by your instructor)</label>
+        <input id="f-access" type="text" maxlength="40">
+      </div>
+      <div id="otp-wrap" class="hidden">
+        <label class="f" for="f-otp">E-mail verification code</label>
+        <div class="row">
+          <input id="f-otp" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+          <button type="button" id="btn-code">Send code</button>
+        </div>
+        <div class="muted" style="font-size:.85rem;margin-top:4px">A code is sent to the address above to confirm it is yours.</div>
+      </div>
+      <label class="check"><input type="checkbox" id="f-honour">
+        <span>I will work alone, without unauthorised material, and I understand that leaving the exam window is recorded and may automatically submit my work.</span></label>
+      <div id="intro-msg"></div>
+      <button class="primary" id="btn-start" type="submit" style="width:100%">Start assessment</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= EXAM ======================= -->
+<div id="screen-exam" class="hidden">
+  <div class="exam-content" id="exam-content">
+    <div class="topbar">
+      <div class="title" id="exam-title"></div>
+      <span class="pill" id="viol-pill" title="Recorded integrity violations">Violations 0</span>
+      <span class="timer" id="timer" aria-live="off">--:--</span>
+    </div>
+    <div class="exam">
+      <main class="card" id="qcard" aria-live="polite"></main>
+      <aside class="card">
+        <div style="font-weight:600">Questions</div>
+        <div class="palette" id="palette"></div>
+        <div class="legend">Blue = answered · dot = flagged for review</div>
+        <button class="primary" id="btn-submit" style="width:100%;margin-top:12px">Submit</button>
+        <div class="save-state" id="save-state">Not saved yet</div>
+      </aside>
+    </div>
+  </div>
+  <div class="watermark" id="watermark"></div>
+</div>
+
+<!-- ======================= DONE ======================= -->
+<div id="screen-done" class="wrap hidden">
+  <div class="card" style="text-align:center">
+    <h1 id="done-title">Submitted</h1>
+    <div id="done-body"></div>
+  </div>
+</div>
+
+<!-- ======================= OVERLAYS ======================= -->
+<div id="guard" class="overlay hidden" role="alertdialog" aria-modal="true">
+  <div class="card">
+    <h2 id="guard-title">Return to the assessment</h2>
+    <p id="guard-text"></p>
+    <button class="primary" id="guard-btn">Return to full screen</button>
+  </div>
+</div>
+<div id="confirm" class="overlay hidden" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2>Submit your answers?</h2>
+    <p id="confirm-text"></p>
+    <div class="nav" style="justify-content:center">
+      <button id="confirm-no">Keep working</button>
+      <button class="primary" id="confirm-yes">Submit now</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(function () {
+'use strict';
+/* =========================================================================
+ *  CONFIGURATION — paste the URL of your Apps Script web-app deployment.
+ *  (It can also be passed in the link: quiz.html?quiz=ID&api=URL)
+ * ========================================================================= */
+var DEFAULT_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+var params = new URLSearchParams(location.search);
+var API_URL = params.get('api') || DEFAULT_API_URL;
+var QUIZ_ID = (params.get('quiz') || '').trim();
+var COUNTED = ['tab_hidden', 'window_blur', 'fullscreen_exit', 'reload'];
+var SAVE_EVERY_MS = 30000;
+
+var S = {
+  info: null, token: null, questions: [], answers: {}, flagged: {}, idx: 0, maxIdx: 0,
+  expiresAt: 0, offset: 0, violations: 0, maxViolations: 3, active: false, away: false,
+  submitting: false, pending: [], lastV: {}, dirty: false, student: null, navigation: 'free',
+};
+
+var $ = function (id) { return document.getElementById(id); };
+function show(id) { ['screen-loading', 'screen-error', 'screen-intro', 'screen-exam', 'screen-done'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); }); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function richText(s) { return esc(s).replace(/\n/g, '<br>'); }
+var mathQueue = [];
+window.addEventListener('load', function () { var q = mathQueue; mathQueue = []; q.forEach(math); });
+function math(el) {
+  if (!window.renderMathInElement) { mathQueue.push(el); return; }
+  {
+    try {
+      window.renderMathInElement(el, { throwOnError: false, delimiters: [
+        { left: '$$', right: '$$', display: true }, { left: '\\[', right: '\\]', display: true },
+        { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }] });
+    } catch (e) { /* leave raw TeX */ }
+  }
+}
+function toast(msg, ms) {
+  var t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.add('hidden'); }, ms || 3500);
+}
+function notice(el, kind, msg) { $(el).innerHTML = msg ? '<div class="notice ' + kind + '">' + esc(msg) + '</div>' : ''; }
+function fmtDate(ms) { return ms ? new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
+function storeKey() { return 'quiz_session_' + QUIZ_ID; }
+function ss(op, k, v) { try { if (op === 'get') return sessionStorage.getItem(k); if (op === 'set') sessionStorage.setItem(k, v); else sessionStorage.removeItem(k); } catch (e) { return null; } }
+function ls(op, k, v) { try { if (op === 'get') return localStorage.getItem(k); if (op === 'set') localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) { return null; } }
+
+function api(action, payload) {
+  var body = Object.assign({ action: action }, payload || {});
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j && j.serverNow) S.offset = j.serverNow - Date.now();
+      if (!j || !j.ok) { var e = new Error((j && j.error) || 'Request failed'); e.code = j && j.code; e.server = true; e.retry = !!(j && j.retry); throw e; }
+      return j;
+    });
+}
+function now() { return Date.now() + S.offset; }
+
+/* ============================ boot ============================ */
+function boot() {
+  if (!QUIZ_ID) return fatal('This link is missing the quiz identifier (?quiz=…). Ask your instructor for the correct link.');
+  if (!/^https?:\/\//.test(API_URL)) return fatal('This page is not connected to a grading server yet (instructor: set DEFAULT_API_URL).');
+  var saved = ss('get', storeKey());
+  api('quizInfo', { quizId: QUIZ_ID }).then(function (r) {
+    S.info = r.quiz;
+    document.title = r.quiz.title;
+    if (saved) return resume(saved);
+    renderIntro();
+  }).catch(function (e) { fatal(e.message); });
+}
+function fatal(msg) { $('fatal-msg').textContent = msg; show('screen-error'); }
+
+function renderIntro() {
+  var q = S.info;
+  $('intro-title').textContent = q.title;
+  var meta = [q.questionCount + ' questions', q.durationMin + ' minutes'];
+  if (q.closeAt) meta.push('Closes ' + fmtDate(q.closeAt));
+  $('intro-meta').innerHTML = meta.map(function (m) { return '<span class="chip">' + esc(m) + '</span>'; }).join('');
+  $('intro-instructions').innerHTML = richText(q.instructions); math($('intro-instructions'));
+  $('access-wrap').classList.toggle('hidden', !q.requiresAccessCode);
+  $('otp-wrap').classList.toggle('hidden', !q.requiresEmailCode);
+  if (q.allowedDomain) $('f-email').placeholder = 'name@' + q.allowedDomain.split(/[,;\s]+/)[0];
+  var rules = [
+    'The exam runs in <b>full-screen mode</b>. Leaving full screen, switching tabs or applications, or minimising the window is recorded.',
+    q.maxViolations > 0 ? 'After <b>' + q.maxViolations + '</b> recorded violations your answers are <b>submitted automatically</b>.' : 'All violations are reported to your instructor.',
+    'Copying, pasting, printing, right-clicking and screenshots shortcuts are blocked and logged.',
+    'The timer is controlled by the server: reloading the page or closing it does <b>not</b> pause it, and counts as a violation.',
+    'Your answers are saved automatically every few seconds. When time is up, the exam submits by itself.',
+    'Questions and answer options are shuffled individually for every student. One attempt only.',
+    q.navigation === 'forward_only' ? '<b>You cannot go back</b> to a previous question once you move on.' : 'You can move freely between questions and flag them for review.',
+  ];
+  $('rules').innerHTML = rules.map(function (r) { return '<li>' + r + '</li>'; }).join('');
+  if (q.windowState !== 'open') {
+    var m = q.windowState === 'not_open' ? 'This assessment opens on ' + fmtDate(q.openAt) + '.' : q.windowState === 'closed' ? 'This assessment is closed.' : 'This assessment is not active.';
+    notice('window-notice', 'warn', m);
+    $('btn-start').disabled = true;
+  }
+  var remembered = ls('get', 'quiz_identity');
+  if (remembered) { try { var id = JSON.parse(remembered); $('f-name').value = id.name || ''; $('f-email').value = id.email || ''; $('f-sid').value = id.sid || ''; } catch (e) {} }
+  show('screen-intro');
+}
+
+$('btn-code').addEventListener('click', function () {
+  var btn = this; notice('intro-msg', '', '');
+  var email = $('f-email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return notice('intro-msg', 'err', 'Enter a valid e-mail address first.');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  api('requestCode', { quizId: QUIZ_ID, email: email, name: $('f-name').value.trim() }).then(function () {
+    notice('intro-msg', 'ok', 'Code sent to ' + email + '. Check your inbox (and spam folder).');
+    var n = 45; var t = setInterval(function () { btn.textContent = 'Resend (' + (n--) + ')'; if (n < 0) { clearInterval(t); btn.disabled = false; btn.textContent = 'Resend code'; } }, 1000);
+    $('f-otp').focus();
+  }).catch(function (e) { btn.disabled = false; btn.textContent = 'Send code'; notice('intro-msg', 'err', e.message); });
+});
+
+$('identity-form').addEventListener('submit', function (ev) {
+  ev.preventDefault(); notice('intro-msg', '', '');
+  var name = $('f-name').value.trim(), email = $('f-email').value.trim();
+  if (name.length < 3) return notice('intro-msg', 'err', 'Enter your full name.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return notice('intro-msg', 'err', 'Enter a valid e-mail address.');
+  if (S.info.requiresAccessCode && !$('f-access').value.trim()) return notice('intro-msg', 'err', 'Enter the access code.');
+  if (S.info.requiresEmailCode && !/^\d{6}$/.test($('f-otp').value.trim())) return notice('intro-msg', 'err', 'Enter the 6-digit verification code sent to your e-mail.');
+  if (!$('f-honour').checked) return notice('intro-msg', 'err', 'Please accept the honour statement.');
+  ls('set', 'quiz_identity', JSON.stringify({ name: name, email: email, sid: $('f-sid').value.trim() }));
+  var btn = $('btn-start'); btn.disabled = true; btn.textContent = 'Starting…';
+  enterFullscreen();   // must run inside the click gesture
+  api('start', {
+    quizId: QUIZ_ID, name: name, email: email, studentId: $('f-sid').value.trim(),
+    accessCode: $('f-access').value.trim(), emailCode: $('f-otp').value.trim(), userAgent: navigator.userAgent,
+  }).then(function (r) { beginExam(r, false); })
+    .catch(function (e) { exitFullscreen(); btn.disabled = false; btn.textContent = 'Start assessment'; notice('intro-msg', 'err', e.message); });
+});
+
+function resume(token) {
+  api('resume', { token: token, userAgent: navigator.userAgent }).then(function (r) { beginExam(r, true); })
+    .catch(function (e) {
+      ss('del', storeKey());
+      if (e.code === 'ALREADY_SUBMITTED') return finish({ alreadySubmitted: true });
+      renderIntro();
+      notice('intro-msg', 'warn', e.message);
+    });
+}
+
+/* ============================ exam ============================ */
+function beginExam(r, resumed) {
+  S.token = r.token; S.questions = r.questions; S.expiresAt = r.expiresAt; S.student = r.student;
+  S.violations = r.violations || 0; S.maxViolations = r.quiz.maxViolations; S.navigation = r.quiz.navigation;
+  S.answers = r.draft || {};
+  var backup = ls('get', 'quiz_backup_' + S.token);
+  if (backup) { try { var b = JSON.parse(backup); if (b && Object.keys(b).length >= Object.keys(S.answers).length) S.answers = b; } catch (e) {} }
+  ss('set', storeKey(), S.token);
+  S.active = true;
+  document.body.classList.add('exam-mode');
+  $('exam-title').textContent = r.quiz.title;
+  drawWatermark();
+  if (S.navigation === 'forward_only') {
+    // resume at the first unanswered question
+    var first = S.questions.findIndex(function (q) { return S.answers[q.id] === undefined; });
+    S.idx = S.maxIdx = first < 0 ? S.questions.length - 1 : first;
+  }
+  show('screen-exam');
+  renderQuestion(); renderPalette(); updateViol(); tick();
+  S.timer = setInterval(tick, 500);
+  S.saver = setInterval(function () { save(false); }, SAVE_EVERY_MS);
+  S.devtools = setInterval(devtoolsCheck, 3000);
+  if (resumed) {
+    showGuard('resume');
+    toast('Session resumed. The timer kept running while you were away.', 5000);
+  } else if (!isFullscreen() && fsSupported()) {
+    showGuard('fullscreen');
+  } else if (!fsSupported()) {
+    violation('no_fullscreen_support', navigator.userAgent.slice(0, 80));
+  }
+}
+
+function drawWatermark() {
+  var txt = (S.student.name + ' · ' + S.student.email + (S.student.studentId ? ' · ' + S.student.studentId : '')).replace(/[<&>"]/g, '');
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="200"><text x="10" y="110" transform="rotate(-22 210 100)" ' +
+    'font-family="Arial" font-size="16" fill="#808080">' + txt + '</text></svg>';
+  $('watermark').style.backgroundImage = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '")';
+}
+
+function renderQuestion() {
+  var q = S.questions[S.idx], n = S.questions.length, a = S.answers[q.id];
+  var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var html = '<div class="qhead"><span>Question ' + (S.idx + 1) + ' of ' + n + '</span><span>' + q.points + ' pt' + (q.points === 1 ? '' : 's') + '</span></div>' +
+    '<div class="qtext" id="qtext">' + richText(q.text) + '</div>';
+  if (q.type === 'mcq' || q.type === 'tf' || q.type === 'multi') {
+    var multi = q.type === 'multi';
+    if (multi) html += '<div class="muted" style="font-size:.9rem;margin-bottom:8px">Select all that apply. Wrong selections cost points.</div>';
+    q.options.forEach(function (o, k) {
+      var checked = multi ? (Array.isArray(a) && a.indexOf(o.i) >= 0) : a === o.i;
+      html += '<label class="opt' + (checked ? ' sel' : '') + '"><input type="' + (multi ? 'checkbox' : 'radio') + '" name="opt" value="' + o.i + '"' + (checked ? ' checked' : '') + '>' +
+        '<span class="letter">' + letters[k] + '</span><span class="otext">' + richText(o.t) + '</span></label>';
+    });
+  } else if (q.type === 'numeric') {
+    html += '<label class="f" for="ans">Your answer (number)</label><input type="text" id="ans" inputmode="decimal" autocomplete="off" spellcheck="false" value="' + esc(a || '') + '">';
+  } else if (q.type === 'short') {
+    html += '<label class="f" for="ans">Your answer</label><input type="text" id="ans" autocomplete="off" spellcheck="false" maxlength="300" value="' + esc(a || '') + '">';
+  } else {
+    html += '<label class="f" for="ans">Your answer</label><textarea id="ans" spellcheck="false" maxlength="5000">' + esc(a || '') + '</textarea>';
+  }
+  var fwd = S.navigation === 'forward_only';
+  html += '<div class="nav"><div>' + (fwd ? '' : '<button id="btn-prev"' + (S.idx === 0 ? ' disabled' : '') + '>← Previous</button>') +
+    (fwd ? '' : ' <button id="btn-flag">' + (S.flagged[q.id] ? 'Unflag' : 'Flag for review') + '</button>') + '</div>' +
+    (S.idx < n - 1 ? '<button class="primary" id="btn-next">Next →</button>' : '<button class="primary" id="btn-finish">Finish &amp; submit</button>') + '</div>';
+  var card = $('qcard'); card.innerHTML = html; math(card);
+
+  card.querySelectorAll('input[name=opt]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      if (q.type === 'multi') {
+        var vals = []; card.querySelectorAll('input[name=opt]:checked').forEach(function (c) { vals.push(Number(c.value)); });
+        setAnswer(q.id, vals.length ? vals : undefined);
+      } else setAnswer(q.id, Number(inp.value));
+      card.querySelectorAll('.opt').forEach(function (l) { l.classList.toggle('sel', l.querySelector('input').checked); });
+    });
+  });
+  var ans = $('ans');
+  if (ans) {
+    ans.addEventListener('input', function () { setAnswer(q.id, ans.value.trim() === '' ? undefined : ans.value); });
+    ans.addEventListener('paste', function (e) { e.preventDefault(); violation('paste_attempt', 'Q' + (S.idx + 1)); toast('Pasting is disabled.'); });
+    ans.addEventListener('drop', function (e) { e.preventDefault(); violation('drop_attempt'); });
+  }
+  if ($('btn-prev')) $('btn-prev').onclick = function () { go(S.idx - 1); };
+  if ($('btn-next')) $('btn-next').onclick = function () {
+    if (fwd && S.answers[q.id] === undefined && !confirmSkip()) return;
+    go(S.idx + 1);
+  };
+  if ($('btn-finish')) $('btn-finish').onclick = askSubmit;
+  if ($('btn-flag')) $('btn-flag').onclick = function () { S.flagged[q.id] = !S.flagged[q.id]; renderQuestion(); renderPalette(); };
+}
+function confirmSkip() { toast('Answer this question before moving on — you cannot come back.'); return false; }
+
+function setAnswer(id, v) {
+  if (v === undefined) delete S.answers[id]; else S.answers[id] = v;
+  S.dirty = true; ls('set', 'quiz_backup_' + S.token, JSON.stringify(S.answers));
+  renderPalette();
+  clearTimeout(S._deb); S._deb = setTimeout(function () { save(false); }, 4000);
+}
+
+function go(i) {
+  if (i < 0 || i >= S.questions.length) return;
+  if (S.navigation === 'forward_only' && i < S.idx) return;
+  S.idx = i; S.maxIdx = Math.max(S.maxIdx, i);
+  renderQuestion(); renderPalette(); window.scrollTo(0, 0);
+  if (S.dirty) save(false);
+}
+
+function renderPalette() {
+  var fwd = S.navigation === 'forward_only';
+  $('palette').innerHTML = S.questions.map(function (q, i) {
+    var cls = [S.answers[q.id] !== undefined ? 'answered' : '', i === S.idx ? 'current' : '', S.flagged[q.id] ? 'flagged' : ''].join(' ');
+    var dis = fwd && i !== S.idx ? ' disabled' : '';
+    return '<button class="' + cls + '" data-i="' + i + '"' + dis + ' aria-label="Question ' + (i + 1) + '">' + (i + 1) + '</button>';
+  }).join('');
+  $('palette').querySelectorAll('button').forEach(function (b) { b.onclick = function () { go(Number(b.dataset.i)); }; });
+}
+
+function tick() {
+  var left = Math.max(0, S.expiresAt - now());
+  var m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+  var t = $('timer'); t.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  t.classList.toggle('warn', left <= 300000 && left > 60000);
+  t.classList.toggle('crit', left <= 60000);
+  if (!S.warned5 && left <= 300000 && left > 60000) { S.warned5 = true; toast('5 minutes left.'); }
+  if (!S.warned1 && left <= 60000 && left > 0) { S.warned1 = true; toast('1 minute left — your work will be submitted automatically.'); }
+  if (left <= 0 && S.active && !S.submitting) submit(true, 'time_up');
+}
+
+function save(force) {
+  if (!S.active || (!S.dirty && !force)) return Promise.resolve();
+  S.dirty = false;
+  return api('save', { token: S.token, answers: S.answers }).then(function (r) {
+    S.expiresAt = r.expiresAt;
+    if (typeof r.violations === 'number' && r.violations > S.violations) { S.violations = r.violations; updateViol(); }
+    $('save-state').textContent = 'Saved ' + new Date().toLocaleTimeString();
+  }).catch(function (e) {
+    S.dirty = true;
+    $('save-state').textContent = 'Offline — answers kept on this device';
+    if (e.code === 'ALREADY_SUBMITTED' || e.code === 'INACTIVE' || e.code === 'NO_SESSION') endLocked(e.message);
+  });
+}
+
+function updateViol() {
+  var p = $('viol-pill');
+  p.textContent = 'Violations ' + S.violations + (S.maxViolations > 0 ? ' / ' + S.maxViolations : '');
+  p.classList.toggle('bad', S.violations > 0);
+}
+
+/* ============================ integrity ============================ */
+function violation(type, detail) {
+  if (!S.active || S.submitting) return;
+  var t = Date.now();
+  if (S.lastV[type] && t - S.lastV[type] < 1500) return;  // de-bounce duplicate browser events
+  S.lastV[type] = t;
+  var counted = COUNTED.indexOf(type) >= 0;
+  if (counted) { S.violations++; updateViol(); }
+  api('violation', { token: S.token, type: type, detail: detail || '' }).then(function (r) {
+    S.violations = Math.max(S.violations, r.violations); updateViol();
+    if (r.mustSubmit) submit(true, 'violation_limit');
+  }).catch(function () {
+    S.pending.push({ type: type, detail: detail || '' });
+    if (counted && S.maxViolations > 0 && S.violations >= S.maxViolations) submit(true, 'violation_limit');
+  });
+  if (counted && S.maxViolations > 0) {
+    var left = S.maxViolations - S.violations;
+    if (left > 0) toast('Violation recorded (' + type.replace(/_/g, ' ') + '). ' + left + ' more and your exam is submitted automatically.', 5000);
+  }
+}
+
+function fsSupported() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }
+function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function enterFullscreen() {
+  var el = document.documentElement;
+  try {
+    var p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null;
+    if (p && p.catch) p.catch(function () {});
+  } catch (e) {}
+}
+function exitFullscreen() {
+  try { if (isFullscreen()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } } catch (e) {}
+}
+
+function showGuard(kind) {
+  var title = 'Return to the assessment', text = '';
+  if (kind === 'away') text = 'You left the assessment window. This has been recorded and your instructor will see it.';
+  else if (kind === 'fullscreen') { title = 'Full screen required'; text = 'The assessment must be taken in full-screen mode.'; }
+  else if (kind === 'resume') { title = 'Resume your assessment'; text = 'Your session was restored. Reloading was recorded as a violation.'; }
+  $('guard-title').textContent = title; $('guard-text').textContent = text;
+  $('guard-btn').textContent = fsSupported() ? 'Return to full screen' : 'Continue';
+  $('guard').classList.remove('hidden');
+  $('exam-content').classList.add('blurred');
+}
+function hideGuard() { $('guard').classList.add('hidden'); $('exam-content').classList.remove('blurred'); }
+$('guard-btn').addEventListener('click', function () {
+  if (fsSupported() && !isFullscreen()) enterFullscreen();
+  S.away = false;
+  setTimeout(function () { if (!fsSupported() || isFullscreen()) hideGuard(); }, 250);
+});
+
+function goneAway(type, detail) {
+  if (!S.active || S.away) return;
+  S.away = true; violation(type, detail); showGuard('away');
+  save(true);
+}
+document.addEventListener('visibilitychange', function () { if (document.hidden) goneAway('tab_hidden'); });
+window.addEventListener('blur', function () {
+  setTimeout(function () {
+    if (!S.active) return;
+    if (document.hidden) goneAway('tab_hidden');
+    else if (!document.hasFocus()) goneAway('window_blur');
+  }, 300);
+});
+window.addEventListener('focus', function () { S.away = false; });
+['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+  document.addEventListener(ev, function () {
+    if (!S.active) return;
+    if (!isFullscreen()) { violation('fullscreen_exit'); showGuard('fullscreen'); }
+    else if (!S.away) hideGuard();
+  });
+});
+['copy', 'cut'].forEach(function (ev) { document.addEventListener(ev, function (e) { if (!S.active) return; e.preventDefault(); violation(ev + '_attempt'); }); });
+document.addEventListener('paste', function (e) { if (!S.active) return; e.preventDefault(); violation('paste_attempt'); });
+document.addEventListener('contextmenu', function (e) { if (!S.active) return; e.preventDefault(); violation('right_click'); });
+document.addEventListener('dragstart', function (e) { if (S.active) e.preventDefault(); });
+document.addEventListener('selectstart', function (e) { if (S.active && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.preventDefault(); });
+document.addEventListener('keydown', function (e) {
+  if (!S.active) return;
+  var k = (e.key || '').toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  var blocked = e.key === 'F12' || e.key === 'F5' || (mod && e.shiftKey && ['i', 'j', 'c', 'k'].indexOf(k) >= 0) ||
+    (mod && ['c', 'x', 'v', 'p', 's', 'u', 'f', 'r', 'g', 'a'].indexOf(k) >= 0) || (e.altKey && (k === 'tab' || k === 'arrowleft'));
+  if (blocked) { e.preventDefault(); e.stopPropagation(); violation('blocked_shortcut', (mod ? 'Ctrl+' : '') + (e.shiftKey ? 'Shift+' : '') + e.key); }
+}, true);
+document.addEventListener('keyup', function (e) {
+  if (S.active && e.key === 'PrintScreen') {
+    violation('screenshot_key');
+    try { navigator.clipboard && navigator.clipboard.writeText(''); } catch (x) {}
+    toast('Screenshots are not allowed.');
+  }
+}, true);
+window.addEventListener('beforeprint', function () { if (S.active) violation('print_attempt'); });
+window.addEventListener('beforeunload', function (e) { if (S.active && !S.submitting) { save(true); e.preventDefault(); e.returnValue = ''; } });
+function devtoolsCheck() {
+  if (!S.active || !isFullscreen()) return;
+  var gapW = screen.width - window.innerWidth * (window.devicePixelRatio / (S.dpr0 || (S.dpr0 = window.devicePixelRatio)));
+  var gapH = screen.height - window.innerHeight * (window.devicePixelRatio / S.dpr0);
+  if (gapW > 200 || gapH > 250) violation('devtools_suspected', Math.round(gapW) + 'x' + Math.round(gapH));
+}
+
+/* ============================ submit ============================ */
+function askSubmit() {
+  var missing = S.questions.filter(function (q) { return S.answers[q.id] === undefined; }).length;
+  var flagged = S.questions.filter(function (q) { return S.flagged[q.id]; }).length;
+  $('confirm-text').textContent = (missing ? missing + ' question(s) unanswered. ' : 'All questions answered. ') +
+    (flagged ? flagged + ' flagged for review. ' : '') + 'You cannot change your answers after submitting.';
+  $('confirm').classList.remove('hidden');
+}
+$('confirm-no').onclick = function () { $('confirm').classList.add('hidden'); };
+$('confirm-yes').onclick = function () { $('confirm').classList.add('hidden'); submit(false, ''); };
+$('btn-submit').onclick = askSubmit;
+
+function submit(auto, reason) {
+  if (S.submitting) return;
+  S.submitting = true;
+  clearInterval(S.saver); clearInterval(S.devtools);
+  hideGuard();
+  $('qcard').innerHTML = '<p class="muted">Submitting your answers…</p>';
+  var attempt = 0;
+  (function tryOnce() {
+    attempt++;
+    api('submit', { token: S.token, answers: S.answers, autoSubmitted: !!auto, reason: reason, pendingViolations: S.pending })
+      .then(function (r) { finish(r, auto, reason); })
+      .catch(function (e) {
+        if (e.server && !e.retry) return finish({ error: e.message });
+        if (attempt < 5) return setTimeout(tryOnce, attempt * 2000);
+        $('qcard').innerHTML = '<div class="notice err">Could not reach the server. Your answers are stored on this device — check your connection, then retry.</div><button class="primary" id="btn-retry">Retry submission</button>';
+        $('btn-retry').onclick = function () { attempt = 0; $('qcard').innerHTML = '<p class="muted">Submitting…</p>'; tryOnce(); };
+      });
+  })();
+}
+
+function endLocked(msg) { S.active = false; finish({ error: msg }); }
+
+function finish(r, auto, reason) {
+  S.active = false; clearInterval(S.timer); clearInterval(S.saver); clearInterval(S.devtools);
+  document.body.classList.remove('exam-mode');
+  ss('del', storeKey()); if (S.token) ls('del', 'quiz_backup_' + S.token);
+  exitFullscreen();
+  var res = r && r.result, body = '';
+  if (r && r.error) {
+    $('done-title').textContent = 'Attempt closed';
+    body = '<p class="notice warn">' + esc(r.error) + '</p>';
+  } else if (r && r.alreadySubmitted && !res) {
+    $('done-title').textContent = 'Already submitted';
+    body = '<p>This attempt has already been submitted. Only one attempt is allowed.</p>';
+  } else {
+    $('done-title').textContent = auto ? 'Submitted automatically' : 'Submitted';
+    if (auto) body += '<p class="notice warn">' + (reason === 'time_up' ? 'Time is up.' : 'The violation limit was reached.') + ' Your answers were submitted for you.</p>';
+    if (res && res.showScore) {
+      body += '<div class="score-big">' + res.score + ' / ' + res.max + '</div><p>' + res.pct + '% — ' + (res.passed ? 'pass' : 'below the pass mark') + '</p>';
+    }
+    var es = res ? String(res.emailStatus || '') : '';
+    if (/^SENT/.test(es)) body += '<p>Your detailed feedback has been e-mailed to <b>' + esc(res.email) + '</b>.</p>';
+    else if (es === 'DISABLED') body += '<p>Your answers have been recorded.</p>';
+    else if (/^FAILED/.test(es)) body += '<p>Your answers were recorded, but the feedback e-mail could not be sent yet. Your instructor will resend it.</p>';
+    else body += '<p>Your answers have been recorded. Feedback will be e-mailed to <b>' + esc(res ? res.email : '') + '</b> when your instructor releases results.</p>';
+    if (res) body += '<p class="muted">Reference: ' + esc(res.submissionId) + '</p>';
+  }
+  body += '<p class="muted">You can now close this window.</p>';
+  $('done-body').innerHTML = body;
+  show('screen-done');
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
