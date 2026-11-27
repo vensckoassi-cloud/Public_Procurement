@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Grades Dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9; --surface: #ffffff; --surface-2: #eef1f5; --border: #d9dee6; --grid: #e6e9ee;
+  --text: #191919; --text-2: #5c6470; --accent: #257de0; --accent-ink: #fff; --series-1: #257de0;
+  --good: #1e7b34; --good-bg: #e7f6ea; --warn: #8a5a00; --warn-bg: #fff4d6; --bad: #b42318; --bad-bg: #fdecec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121417; --surface: #1c1f24; --surface-2: #262a31; --border: #353b45; --grid: #2c3139;
+    --text: #efefef; --text-2: #a3abb7; --accent: #338ced; --series-1: #338ced;
+    --good: #5fd27a; --good-bg: #173322; --warn: #f2c14e; --warn-bg: #3a2f12; --bad: #ff8a80; --bad-bg: #3d1c1a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121417; --surface: #1c1f24; --surface-2: #262a31; --border: #353b45; --grid: #2c3139;
+  --text: #efefef; --text-2: #a3abb7; --accent: #338ced; --series-1: #338ced;
+  --good: #5fd27a; --good-bg: #173322; --warn: #f2c14e; --warn-bg: #3a2f12; --bad: #ff8a80; --bad-bg: #3d1c1a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.hidden { display: none !important; }
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+header h1 { font-size: 1.15rem; margin: 0; flex: 1; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card h2 { font-size: 1rem; margin: 0 0 12px; }
+.muted { color: var(--text-2); }
+button, select { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 7px 12px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--bad); }
+button.sm { padding: 4px 9px; font-size: .85rem; }
+input[type=text], input[type=password], input[type=number], input[type=search], textarea {
+  font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); width: 100%; }
+label.f { display: block; font-weight: 600; font-size: .85rem; margin: 10px 0 4px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar .grow { flex: 1; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .k { font-size: .78rem; color: var(--text-2); }
+.tile .v { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { font-size: .78rem; color: var(--text-2); font-weight: 600; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.click:hover td { background: var(--surface-2); cursor: pointer; }
+tr.void td { opacity: .45; text-decoration: line-through; }
+.badge { display: inline-block; font-size: .74rem; padding: 1px 7px; border-radius: 999px; margin: 1px 2px 1px 0; background: var(--surface-2); color: var(--text-2); }
+.badge.bad { background: var(--bad-bg); color: var(--bad); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.good { background: var(--good-bg); color: var(--good); }
+.notice { border-radius: 8px; padding: 9px 12px; margin: 10px 0; }
+.notice.err { background: var(--bad-bg); color: var(--bad); }
+.notice.ok { background: var(--good-bg); color: var(--good); }
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: 240px; display: block; }
+.tip { position: absolute; pointer-events: none; background: var(--text); color: var(--bg); font-size: .8rem; padding: 5px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); }
+.overlay { position: fixed; inset: 0; background: rgba(10,12,16,.6); z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 24px 16px; overflow-y: auto; }
+.overlay .card { max-width: 860px; width: 100%; }
+.qitem { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.qitem .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+.qitem .row input[type=number] { width: 90px; }
+.log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; max-height: 220px; overflow-y: auto; background: var(--surface-2); padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+.linkbox { font-family: ui-monospace, Menlo, monospace; font-size: .8rem; word-break: break-all; background: var(--surface-2); padding: 6px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Grades Dashboard</h1>
+  <span class="muted" id="hdr-status"></span>
+  <button id="btn-settings" class="sm">Connection</button>
+</header>
+<main>
+  <!-- ===================== CONNECTION ===================== -->
+  <section class="card hidden" id="settings">
+    <h2>Connect to your grading server</h2>
+    <div class="grid2">
+      <div><label class="f" for="s-api">Apps Script web-app URL</label><input id="s-api" type="text" placeholder="https://script.google.com/macros/s/…/exec"></div>
+      <div><label class="f" for="s-key">Admin key (from setup())</label><input id="s-key" type="password" autocomplete="off"></div>
+    </div>
+    <label class="f" for="s-quizurl">Public address of quiz.html (used to build student links)</label>
+    <input id="s-quizurl" type="text" placeholder="https://yourname.github.io/quiz/quiz.html">
+    <p class="muted" style="font-size:.85rem">Stored only in this browser. Never share the admin key with students.</p>
+    <div class="toolbar"><button class="primary" id="btn-connect">Connect</button><span id="settings-msg"></span></div>
+  </section>
+
+  <!-- ===================== OVERVIEW ===================== -->
+  <section id="overview" class="hidden">
+    <div class="card">
+      <div class="toolbar"><h2 class="grow" style="margin:0">Assessments</h2><span class="muted" id="quota"></span><button class="sm" id="btn-reload-ov">Refresh</button></div>
+      <div class="tablewrap" style="margin-top:10px"><table id="quiz-table"></table></div>
+      <p class="muted" style="font-size:.85rem">Create or edit assessments in the <b>Quizzes</b> and <b>Questions</b> tabs of your Google Sheet, then refresh.</p>
+    </div>
+  </section>
+
+  <!-- ===================== QUIZ DETAIL ===================== -->
+  <section id="detail" class="hidden">
+    <div class="toolbar" style="margin-bottom:12px">
+      <button class="sm" id="btn-back">← All assessments</button>
+      <h2 class="grow" id="d-title" style="margin:0;font-size:1.15rem"></h2>
+      <label class="muted" style="font-size:.85rem"><input type="checkbox" id="auto-refresh"> Live refresh</label>
+      <button class="sm" id="btn-refresh">Refresh</button>
+    </div>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <div class="toolbar"><h2 class="grow" style="margin:0">Score distribution</h2><span class="muted" style="font-size:.85rem" id="hist-note"></span></div>
+      <div class="chart-wrap" id="hist"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar" style="margin-bottom:10px">
+        <h2 class="grow" style="margin:0">Results</h2>
+        <input type="search" id="filter" placeholder="Search name, e-mail, ID…" style="max-width:240px">
+        <select id="flag-filter"><option value="">All</option><option value="flagged">Flagged only</option><option value="manual">Needs grading</option><option value="void">Voided</option></select>
+        <button class="sm" id="btn-csv">Export CSV</button>
+        <button class="sm primary" id="btn-send">Send pending feedback</button>
+      </div>
+      <div id="detail-msg"></div>
+      <div class="tablewrap"><table id="results"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Item analysis</h2>
+      <p class="muted" style="font-size:.85rem;margin-top:-6px">Facility = average share of points earned. Discrimination = correlation between the item score and the rest of the test; below 0.20 suggests a weak or ambiguous question.</p>
+      <div class="tablewrap"><table id="items"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>In progress now</h2>
+      <div class="tablewrap"><table id="live"></table></div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== STUDENT MODAL ===================== -->
+<div class="overlay hidden" id="modal"><div class="card" id="modal-body"></div></div>
+
+<script>
+(function () {
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch (e) { return ''; } }
+var params = new URLSearchParams(location.search);
+var CFG = { api: params.get('api') || store('dash_api'), key: store('dash_key'), quizUrl: store('dash_quizurl') };
+var STATE = { overview: null, data: null, quizId: null, sort: { col: 'submittedAt', dir: -1 }, timer: null };
+
+function api(action, payload) {
+  return fetch(CFG.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: action, adminKey: CFG.key }, payload || {})) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (!j.ok) { var e = new Error(j.error); e.code = j.code; throw e; } return j; });
+}
+function msg(el, kind, text) { $(el).innerHTML = text ? '<div class="notice ' + kind + '">' + esc(text) + '</div>' : ''; }
+function fmt(x, d) { return x == null || isNaN(x) ? '–' : Number(x).toFixed(d == null ? 1 : d).replace(/\.0+$/, ''); }
+function dt(ms) { return ms ? new Date(ms).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '–'; }
+function dur(s) { if (s == null) return '–'; var m = Math.floor(s / 60); return m + 'm ' + (s % 60) + 's'; }
+function show(id) { ['overview', 'detail'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); }
+
+/* ---------------- connection ---------------- */
+$('s-api').value = CFG.api; $('s-key').value = CFG.key; $('s-quizurl').value = CFG.quizUrl;
+$('btn-settings').onclick = function () { $('settings').classList.toggle('hidden'); };
+$('btn-connect').onclick = function () {
+  CFG.api = $('s-api').value.trim(); CFG.key = $('s-key').value.trim(); CFG.quizUrl = $('s-quizurl').value.trim();
+  store('dash_api', CFG.api); store('dash_key', CFG.key); store('dash_quizurl', CFG.quizUrl);
+  loadOverview(true);
+};
+
+function loadOverview(fromSettings) {
+  if (!CFG.api || !CFG.key) { $('settings').classList.remove('hidden'); return; }
+  $('hdr-status').textContent = 'Loading…';
+  api('adminOverview').then(function (r) {
+    STATE.overview = r; $('settings').classList.add('hidden'); $('hdr-status').textContent = '';
+    $('quota').textContent = 'E-mails left today: ' + r.mailQuota;
+    renderOverview();
+    if (!STATE.quizId) show('overview');
+  }).catch(function (e) {
+    $('hdr-status').textContent = '';
+    $('settings').classList.remove('hidden');
+    msg('settings-msg', 'err', e.message);
+  });
+}
+
+function studentLink(id) {
+  var base = CFG.quizUrl || 'quiz.html';
+  var sep = base.indexOf('?') >= 0 ? '&' : '?';
+  return base + sep + 'quiz=' + encodeURIComponent(id);
+}
+
+function stateBadge(s) {
+  return { open: '<span class="badge good">open</span>', not_open: '<span class="badge">scheduled</span>', closed: '<span class="badge">closed</span>', inactive: '<span class="badge warn">inactive</span>' }[s] || esc(s);
+}
+
+function renderOverview() {
+  var rows = STATE.overview.quizzes;
+  var h = '<tr><th>ID</th><th>Title</th><th>Status</th><th>Window</th><th class="num">Questions</th><th class="num">Submitted</th><th class="num">In progress</th><th class="num">Mean %</th><th>Student link</th></tr>';
+  if (!rows.length) h += '<tr><td colspan="9" class="muted">No assessments yet.</td></tr>';
+  rows.forEach(function (q) {
+    h += '<tr class="click" data-id="' + esc(q.id) + '"><td><b>' + esc(q.id) + '</b></td><td>' + esc(q.title) + '</td><td>' + stateBadge(q.windowState) + '</td>' +
+      '<td class="muted">' + dt(q.openAt) + ' → ' + dt(q.closeAt) + '</td><td class="num">' + q.questionCount + '</td><td class="num">' + q.submissions + '</td>' +
+      '<td class="num">' + q.inProgress + '</td><td class="num">' + fmt(q.meanPct) + '</td>' +
+      '<td><button class="sm copy" data-link="' + esc(studentLink(q.id)) + '">Copy link</button></td></tr>';
+  });
+  $('quiz-table').innerHTML = h;
+  $('quiz-table').querySelectorAll('tr.click').forEach(function (tr) {
+    tr.onclick = function (ev) {
+      if (ev.target.classList.contains('copy')) {
+        ev.stopPropagation();
+        var link = ev.target.dataset.link;
+        (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { ev.target.textContent = 'Copied!'; })
+          .catch(function () { prompt('Copy this link:', link); });
+        return;
+      }
+      openQuiz(tr.dataset.id);
+    };
+  });
+}
+$('btn-reload-ov').onclick = function () { loadOverview(); };
+
+/* ---------------- quiz detail ---------------- */
+function openQuiz(id) { STATE.quizId = id; show('detail'); $('d-title').textContent = id; loadQuiz(); }
+$('btn-back').onclick = function () { STATE.quizId = null; $('auto-refresh').checked = false; clearInterval(STATE.timer); show('overview'); loadOverview(); };
+$('btn-refresh').onclick = function () { loadQuiz(); };
+$('auto-refresh').onchange = function () { clearInterval(STATE.timer); if (this.checked) STATE.timer = setInterval(loadQuiz, 20000); };
+$('filter').oninput = renderResults; $('flag-filter').onchange = renderResults;
+
+function loadQuiz() {
+  $('hdr-status').textContent = 'Loading…';
+  return api('adminResults', { quizId: STATE.quizId }).then(function (r) {
+    STATE.data = r; $('hdr-status').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    $('d-title').textContent = r.quiz.title + ' (' + r.quiz.id + ')';
+    renderTiles(); renderHist(); renderResults(); renderItems(); renderLive();
+  }).catch(function (e) { $('hdr-status').textContent = ''; msg('detail-msg', 'err', e.message); });
+}
+
+function valid() { return STATE.data.submissions.filter(function (s) { return s.status !== 'VOID'; }); }
+function stats(xs) {
+  if (!xs.length) return { n: 0 };
+  var s = xs.slice().sort(function (a, b) { return a - b; }), n = s.length;
+  var mean = s.reduce(function (a, b) { return a + b; }, 0) / n;
+  var sd = n > 1 ? Math.sqrt(s.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / (n - 1)) : 0;
+  var med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  return { n: n, mean: mean, sd: sd, median: med, min: s[0], max: s[n - 1] };
+}
+function isFlagged(s) { return s.violations > 0 || s.flags.length > 0; }
+
+function renderTiles() {
+  var subs = valid(), st = stats(subs.map(function (s) { return s.pct; }));
+  var pass = subs.filter(function (s) { return s.passed; }).length;
+  var tiles = [
+    ['Submitted', subs.length], ['In progress', STATE.data.live.filter(function (l) { return !l.expired; }).length],
+    ['Mean %', fmt(st.mean)], ['Median %', fmt(st.median)], ['Std. dev.', fmt(st.sd)],
+    ['Min – max', st.n ? fmt(st.min, 0) + ' – ' + fmt(st.max, 0) : '–'],
+    ['Pass rate', subs.length ? fmt(100 * pass / subs.length) + '%' : '–'],
+    ['Flagged', subs.filter(isFlagged).length], ['Needs grading', subs.filter(function (s) { return s.manualPending; }).length],
+  ];
+  $('tiles').innerHTML = tiles.map(function (t) { return '<div class="tile"><div class="k">' + t[0] + '</div><div class="v">' + t[1] + '</div></div>'; }).join('');
+}
+
+function renderHist() {
+  var subs = valid(), bins = [];
+  for (var i = 0; i < 10; i++) bins.push(0);
+  subs.forEach(function (s) { bins[Math.min(9, Math.floor(s.pct / 10))]++; });
+  var W = Math.max(320, Math.round($('hist').clientWidth || 720)), H = 240, ml = 36, mr = 12, mt = 14, mb = 34, pw = W - ml - mr, ph = H - mt - mb;
+  var maxC = Math.max(1, Math.max.apply(null, bins));
+  var step = maxC <= 5 ? 1 : Math.ceil(maxC / 5);
+  var top = Math.ceil(maxC / step) * step;
+  var bw = pw / 10, gap = 2;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Histogram of percentage scores">';
+  for (var g = 0; g <= top; g += step) {
+    var y = mt + ph - ph * g / top;
+    svg += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y + '" y2="' + y + '" stroke="var(--grid)" stroke-width="1"/>' +
+      '<text x="' + (ml - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="var(--text-2)">' + g + '</text>';
+  }
+  bins.forEach(function (c, i) {
+    var x = ml + i * bw + gap / 2, h = ph * c / top, y = mt + ph - h, w = bw - gap, r = Math.min(4, h, w / 2);
+    if (c > 0) {
+      // rounded data-end at the top, square at the baseline
+      svg += '<path d="M' + x + ',' + (mt + ph) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + w - r) +
+        'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (mt + ph) + 'Z" fill="var(--series-1)"/>';
+    }
+    svg += '<rect class="hit" data-i="' + i + '" x="' + (ml + i * bw) + '" y="' + mt + '" width="' + bw + '" height="' + ph + '" fill="transparent"/>';
+    svg += '<text x="' + (ml + i * bw + bw / 2) + '" y="' + (H - mb + 16) + '" text-anchor="middle" font-size="11" fill="var(--text-2)">' + (i * 10) + '–' + (i === 9 ? 100 : i * 10 + 10) + '</text>';
+  });
+  var pm = STATE.data.quiz.passMarkPct, px = ml + pw * pm / 100;
+  svg += '<line x1="' + px + '" x2="' + px + '" y1="' + mt + '" y2="' + (mt + ph) + '" stroke="var(--text-2)" stroke-dasharray="4 3" stroke-width="1.5"/>' +
+    '<text x="' + (px + 4) + '" y="' + (mt + 10) + '" font-size="11" fill="var(--text-2)">pass ' + pm + '%</text>';
+  svg += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + (mt + ph) + '" y2="' + (mt + ph) + '" stroke="var(--text-2)" stroke-width="1"/>';
+  svg += '<text x="' + (ml + pw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" fill="var(--text-2)">Score (%)</text></svg>';
+  $('hist').innerHTML = svg + '<div class="tip hidden" id="tip"></div>';
+  $('hist-note').textContent = subs.length + ' submissions · students per 10-point band';
+  var tip = $('tip'), wrap = $('hist');
+  wrap.querySelectorAll('.hit').forEach(function (r) {
+    r.addEventListener('mousemove', function (ev) {
+      var i = Number(r.dataset.i), box = wrap.getBoundingClientRect();
+      tip.textContent = (i * 10) + '–' + (i === 9 ? 100 : i * 10 + 10) + '%: ' + bins[i] + ' student' + (bins[i] === 1 ? '' : 's');
+      tip.style.left = (ev.clientX - box.left) + 'px'; tip.style.top = (ev.clientY - box.top) + 'px'; tip.classList.remove('hidden');
+    });
+    r.addEventListener('mouseleave', function () { tip.classList.add('hidden'); });
+  });
+}
+
+function flagBadges(s) {
+  var b = [];
+  if (s.status === 'VOID') b.push('<span class="badge">void</span>');
+  if (s.violations > 0) b.push('<span class="badge bad">' + s.violations + ' violation' + (s.violations > 1 ? 's' : '') + '</span>');
+  s.flags.forEach(function (f) {
+    if (f === 'violations') return;
+    var cls = /auto_submitted|late|device_changed/.test(f) ? 'bad' : 'warn';
+    b.push('<span class="badge ' + cls + '">' + esc(f.replace(/_/g, ' ').replace(':', ': ')) + '</span>');
+  });
+  var minor = s.violationLog.filter(function (v) { return !v.counted; }).length;
+  if (minor) b.push('<span class="badge">' + minor + ' minor event' + (minor > 1 ? 's' : '') + '</span>');
+  if (s.manualPending) b.push('<span class="badge warn">needs grading</span>');
+  return b.join('') || '<span class="badge good">clean</span>';
+}
+
+var COLS = [
+  ['name', 'Name'], ['email', 'E-mail'], ['studentId', 'ID'], ['score', 'Score', 1], ['pct', '%', 1], ['passed', 'Pass'],
+  ['durationSec', 'Time', 1], ['violations', 'Integrity'], ['submittedAt', 'Submitted'], ['emailStatus', 'Feedback'],
+];
+function renderResults() {
+  var q = $('filter').value.trim().toLowerCase(), ff = $('flag-filter').value;
+  var rows = STATE.data.submissions.filter(function (s) {
+    if (ff === 'void') { if (s.status !== 'VOID') return false; } else if (s.status === 'VOID' && ff) return false;
+    if (ff === 'flagged' && !isFlagged(s)) return false;
+    if (ff === 'manual' && !s.manualPending) return false;
+    return !q || (s.name + ' ' + s.email + ' ' + s.studentId).toLowerCase().indexOf(q) >= 0;
+  });
+  var c = STATE.sort.col, d = STATE.sort.dir;
+  rows.sort(function (a, b) { var x = a[c], y = b[c]; return (x > y ? 1 : x < y ? -1 : 0) * d; });
+  var h = '<tr>' + COLS.map(function (col) {
+    return '<th data-col="' + col[0] + '"' + (col[2] ? ' class="num"' : '') + '>' + col[1] + (c === col[0] ? (d > 0 ? ' ▲' : ' ▼') : '') + '</th>';
+  }).join('') + '</tr>';
+  if (!rows.length) h += '<tr><td colspan="' + COLS.length + '" class="muted">No submissions match.</td></tr>';
+  rows.forEach(function (s) {
+    h += '<tr class="click' + (s.status === 'VOID' ? ' void' : '') + '" data-id="' + esc(s.id) + '"><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.email) + '</td><td>' + esc(s.studentId) + '</td>' +
+      '<td class="num">' + fmt(s.score, 2) + ' / ' + fmt(s.max, 2) + '</td><td class="num">' + fmt(s.pct) + '</td>' +
+      '<td>' + (s.passed ? '<span class="badge good">✔ pass</span>' : '<span class="badge bad">✖ fail</span>') + '</td>' +
+      '<td class="num">' + dur(s.durationSec) + '</td><td style="white-space:normal;min-width:180px">' + flagBadges(s) + '</td>' +
+      '<td>' + dt(s.submittedAt) + '</td><td class="muted">' + esc(String(s.emailStatus || '').replace(/_/g, ' ').toLowerCase()) + '</td></tr>';
+  });
+  $('results').innerHTML = h;
+  $('results').querySelectorAll('th').forEach(function (th) {
+    th.onclick = function () { var col = th.dataset.col; STATE.sort = { col: col, dir: STATE.sort.col === col ? -STATE.sort.dir : 1 }; renderResults(); };
+  });
+  $('results').querySelectorAll('tr.click').forEach(function (tr) { tr.onclick = function () { openStudent(tr.dataset.id); }; });
+}
+
+function corr(x, y) {
+  var n = x.length; if (n < 3) return null;
+  var mx = x.reduce(function (a, b) { return a + b; }, 0) / n, my = y.reduce(function (a, b) { return a + b; }, 0) / n;
+  var sxy = 0, sxx = 0, syy = 0;
+  for (var i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) * (x[i] - mx); syy += (y[i] - my) * (y[i] - my); }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null;
+}
+function renderItems() {
+  var subs = valid();
+  var h = '<tr><th>Q</th><th>Type</th><th style="min-width:280px">Question</th><th class="num">Answered by</th><th class="num">Full marks</th><th class="num">Facility</th><th class="num">Discrimination</th></tr>';
+  STATE.data.questions.forEach(function (q) {
+    var xs = [], rest = [], full = 0;
+    subs.forEach(function (s) {
+      var d = s.detail.filter(function (it) { return it.id === q.id; })[0];
+      if (!d || d.manual) return;
+      var f = d.points ? d.earned / d.points : 0;
+      xs.push(f); rest.push(s.max - d.points ? (s.score - d.earned) / (s.max - d.points) : 0);
+      if (f >= 1) full++;
+    });
+    var fac = xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null, disc = corr(xs, rest);
+    var dBadge = disc == null ? '–' : (disc < 0.2 ? '<span class="badge warn">' + fmt(disc, 2) + '</span>' : fmt(disc, 2));
+    h += '<tr><td><b>' + esc(q.id) + '</b></td><td>' + esc(q.type) + '</td><td style="white-space:normal">' + esc(q.text.length > 140 ? q.text.slice(0, 140) + '…' : q.text) + '</td>' +
+      '<td class="num">' + xs.length + '</td><td class="num">' + (xs.length ? fmt(100 * full / xs.length) + '%' : '–') + '</td>' +
+      '<td class="num">' + (fac == null ? '–' : fmt(100 * fac) + '%') + '</td><td class="num">' + dBadge + '</td></tr>';
+  });
+  $('items').innerHTML = h;
+}
+
+function renderLive() {
+  var rows = STATE.data.live;
+  var h = '<tr><th>Name</th><th>E-mail</th><th class="num">Answered</th><th class="num">Violations</th><th>Started</th><th>Time left</th><th>Last seen</th></tr>';
+  if (!rows.length) h += '<tr><td colspan="7" class="muted">Nobody is taking this assessment right now.</td></tr>';
+  var now = Date.now();
+  rows.forEach(function (l) {
+    var left = Math.max(0, Math.round((l.expiresAt - now) / 1000));
+    h += '<tr><td>' + esc(l.name) + '</td><td>' + esc(l.email) + '</td><td class="num">' + l.answered + ' / ' + l.total + '</td>' +
+      '<td class="num">' + (l.violations ? '<span class="badge bad">' + l.violations + '</span>' : '0') + '</td><td>' + dt(l.startedAt) + '</td>' +
+      '<td>' + (l.expired ? '<span class="badge warn">expired, never submitted</span>' : dur(left)) + '</td><td>' + Math.round((now - l.lastSeen) / 1000) + ' s ago</td></tr>';
+  });
+  $('live').innerHTML = h;
+}
+
+/* ---------------- student modal ---------------- */
+function openStudent(id) {
+  var s = STATE.data.submissions.filter(function (x) { return x.id === id; })[0]; if (!s) return;
+  var h = '<div class="toolbar"><h2 class="grow" style="margin:0">' + esc(s.name) + '</h2><button class="sm" id="m-close">Close</button></div>' +
+    '<p class="muted">' + esc(s.email) + (s.studentId ? ' · ' + esc(s.studentId) : '') + ' · ref ' + esc(s.id) + ' · submitted ' + dt(s.submittedAt) + ' · ' + dur(s.durationSec) + '</p>' +
+    '<p><b>' + fmt(s.score, 2) + ' / ' + fmt(s.max, 2) + '</b> (' + fmt(s.pct) + '%) ' + flagBadges(s) + '</p><div id="m-msg"></div>';
+  s.detail.forEach(function (d, i) {
+    var st = d.manual ? '<span class="badge warn">needs grading</span>' : d.correct === true ? '<span class="badge good">correct</span>' : d.correct === 'partial' ? '<span class="badge warn">partial</span>' : d.correct === false ? '<span class="badge bad">incorrect</span>' : '<span class="badge">graded</span>';
+    h += '<div class="qitem"><div><b>Q' + (i + 1) + ' (' + esc(d.id) + ')</b> ' + st + ' <span class="muted">' + fmt(d.earned, 2) + ' / ' + d.points + ' pt</span></div>' +
+      '<div style="margin-top:4px">' + esc(d.text) + '</div>' +
+      '<div style="margin-top:4px"><b>Answer:</b> <span style="white-space:pre-wrap">' + esc(d.response) + '</span></div>' +
+      '<div class="muted"><b>Expected:</b> ' + esc(d.correctAnswer) + '</div>' +
+      '<div class="row"><label class="muted" style="font-size:.85rem">Points</label><input type="number" min="0" max="' + d.points + '" step="0.25" value="' + d.earned + '" data-q="' + esc(d.id) + '" class="m-pts">' +
+      '<input type="text" placeholder="Comment for the student (optional)" value="' + esc(d.comment || '') + '" class="m-com" data-q="' + esc(d.id) + '" style="flex:1;min-width:180px">' +
+      '<button class="sm m-save" data-q="' + esc(d.id) + '">Save grade</button></div></div>';
+  });
+  h += '<h2 style="margin-top:16px">Integrity log</h2>';
+  h += s.violationLog.length ? '<div class="log">' + s.violationLog.map(function (v) {
+    return new Date(v.t).toLocaleTimeString() + '  ' + (v.counted ? '⚠ ' : '· ') + esc(v.type) + (v.detail ? '  — ' + esc(v.detail) : '');
+  }).join('\n') + '</div>' : '<p class="muted">No events recorded.</p>';
+  h += '<div class="toolbar" style="margin-top:16px"><button class="primary" id="m-send">Send / resend feedback e-mail</button>' +
+    '<span class="grow"></span><button class="danger" id="m-void">' + (s.status === 'VOID' ? 'Already void' : 'Void attempt (allow retake)') + '</button></div>';
+  $('modal-body').innerHTML = h; $('modal').classList.remove('hidden');
+  $('m-close').onclick = closeModal;
+  document.querySelectorAll('.m-save').forEach(function (b) {
+    b.onclick = function () {
+      var q = b.dataset.q;
+      var pts = document.querySelector('.m-pts[data-q="' + q + '"]').value, com = document.querySelector('.m-com[data-q="' + q + '"]').value;
+      b.disabled = true;
+      api('adminGrade', { submissionId: s.id, qId: q, points: Number(pts), comment: com }).then(function (r) {
+        var note = 'Saved. New score ' + r.score + ' (' + r.pct + '%).' + (r.manualPending ? '' : ' All questions graded — you can now send the feedback.');
+        return loadQuiz().then(function () { openStudent(s.id); msg('m-msg', 'ok', note); });
+      }).catch(function (e) { b.disabled = false; msg('m-msg', 'err', e.message); });
+    };
+  });
+  $('m-send').onclick = function () {
+    if (s.manualPending && !confirm('Some questions still need grading. Send anyway?')) return;
+    api('adminSendFeedback', { quizId: STATE.quizId, submissionIds: [s.id] }).then(function (r) {
+      msg('m-msg', r.sent ? 'ok' : 'err', r.sent ? 'Feedback sent to ' + s.email + '.' : 'Sending failed — see the Feedback column.');
+      loadQuiz();
+    }).catch(function (e) { msg('m-msg', 'err', e.message); });
+  };
+  $('m-void').disabled = s.status === 'VOID';
+  $('m-void').onclick = function () {
+    if (!confirm('Void this attempt? The score is kept for the record (struck through) and ' + s.email + ' can take the assessment again.')) return;
+    api('adminVoid', { submissionId: s.id }).then(function () { closeModal(); loadQuiz(); }).catch(function (e) { msg('m-msg', 'err', e.message); });
+  };
+}
+function closeModal() { $('modal').classList.add('hidden'); }
+$('modal').addEventListener('click', function (e) { if (e.target === $('modal')) closeModal(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+/* ---------------- actions ---------------- */
+$('btn-send').onclick = function () {
+  var pending = valid().filter(function (s) { return !/^SENT|DISABLED/.test(s.emailStatus); });
+  if (!pending.length) return msg('detail-msg', 'ok', 'Every feedback e-mail has already been sent.');
+  var manual = pending.filter(function (s) { return s.manualPending; }).length;
+  if (!confirm('Send feedback e-mails to ' + pending.length + ' student(s)?' + (manual ? '\n' + manual + ' still have ungraded essay questions.' : ''))) return;
+  $('btn-send').disabled = true;
+  api('adminSendFeedback', { quizId: STATE.quizId }).then(function (r) {
+    msg('detail-msg', r.failed ? 'err' : 'ok', r.sent + ' sent' + (r.failed ? ', ' + r.failed + ' failed (see Feedback column)' : '') + '.');
+    $('btn-send').disabled = false; loadQuiz();
+  }).catch(function (e) { $('btn-send').disabled = false; msg('detail-msg', 'err', e.message); });
+};
+
+$('btn-csv').onclick = function () {
+  var qs = STATE.data.questions.map(function (q) { return q.id; });
+  var head = ['submission_id', 'name', 'email', 'student_id', 'score', 'max', 'pct', 'passed', 'duration_sec', 'violations', 'auto_submitted', 'late', 'flags', 'submitted_at', 'status'].concat(qs.map(function (q) { return 'pts_' + q; }));
+  var lines = [head.join(',')];
+  STATE.data.submissions.forEach(function (s) {
+    var per = {}; s.detail.forEach(function (d) { per[d.id] = d.earned; });
+    var row = [s.id, s.name, s.email, s.studentId, s.score, s.max, s.pct, s.passed ? 1 : 0, s.durationSec, s.violations, s.autoSubmitted ? 1 : 0, s.late ? 1 : 0, s.flags.join(' '), new Date(s.submittedAt).toISOString(), s.status]
+      .concat(qs.map(function (q) { return per[q] === undefined ? '' : per[q]; }));
+    lines.push(row.map(function (v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v) && isNaN(Number(v))) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','));
+  });
+  var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = STATE.quizId + '_results_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+};
+
+window.addEventListener('resize', function () {
+  clearTimeout(STATE.rz); STATE.rz = setTimeout(function () { if (STATE.data && !$('detail').classList.contains('hidden')) renderHist(); }, 150);
+});
+
+loadOverview();
+})();
+</script>
+</body>
+</html>
